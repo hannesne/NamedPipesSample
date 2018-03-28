@@ -38,7 +38,7 @@ namespace UWPApp
         protected override void OnNavigatedTo(NavigationEventArgs e)
         {
             base.OnNavigatedTo(e);
-            //Task.Run((Action) PipeServerThread);
+            Task.Run((Action) PipeServerThread);
         }
 
 
@@ -50,16 +50,6 @@ namespace UWPApp
             serverStream.WaitForConnection();
             Debug.WriteLine("Connection established");
 
-            StreamReader reader = new StreamReader(serverStream);
-            StreamWriter writer = new StreamWriter(serverStream);
-            while (true)
-            {
-                var line = reader.ReadLine();
-                Debug.WriteLine($"Message: {line}");
-
-                writer.WriteLine(String.Join("", line.Reverse()));
-                writer.Flush();
-            }
 
         }
 
@@ -78,14 +68,29 @@ namespace UWPApp
         private async void LaunchConsoleApp_OnClick(object sender, RoutedEventArgs e)
         {
             await Windows.ApplicationModel.FullTrustProcessLauncher.LaunchFullTrustProcessForCurrentAppAsync();
-            var client = new NamedPipeClientStream(".",@"LOCAL\mypipe", PipeDirection.InOut, PipeOptions.Asynchronous);
+            
+            //Task.Run((Action)PipeClientThread);
+        }
+
+        private static void PipeClientThread()
+        {
+            var client = new NamedPipeClientStream(".", @"LOCAL\mypipe", PipeDirection.InOut, PipeOptions.Asynchronous);
 
             client.Connect(5000);
 
-            reader = new StreamReader(client);
-            writer = new StreamWriter(client);
+            Console.WriteLine("Connection established");
 
-           
+            StreamReader reader = new StreamReader(client);
+            StreamWriter writer = new StreamWriter(client);
+            while (true)
+            {
+                var line = reader.ReadLine();
+                Console.WriteLine($"Message: {line}");
+
+                writer.WriteLine(String.Join("", line.Reverse()));
+                writer.Flush();
+            }
+
         }
     }
 }

@@ -16,20 +16,21 @@ namespace ConsoleApp
         static void Main(string[] args)
         {
             Console.WriteLine("Hello World!");
-            Thread pipeServerThread = new Thread(new ThreadStart(PipeServerThread));
+            Thread pipeServerThread = new Thread(new ThreadStart(PipeClientThread));
             pipeServerThread.Start();
             Console.ReadLine();
         }
 
-        private static void PipeServerThread()
+        private static void PipeClientThread()
         {
-            NamedPipeServerStream serverStream = new NamedPipeServerStream(@"LOCAL\mypipe", PipeDirection.InOut, 1, PipeTransmissionMode.Byte, PipeOptions.Asynchronous);
-            Console.WriteLine("Waiting for connection");
-            serverStream.WaitForConnection();
+            var client = new NamedPipeClientStream(".", @"LOCAL\mypipe", PipeDirection.InOut, PipeOptions.Asynchronous);
+
+            client.Connect(5000);
+
             Console.WriteLine("Connection established");
 
-            StreamReader reader = new StreamReader(serverStream);
-            StreamWriter writer = new StreamWriter(serverStream);
+            StreamReader reader = new StreamReader(client);
+            StreamWriter writer = new StreamWriter(client);
             while (true)
             {
                 var line = reader.ReadLine();
