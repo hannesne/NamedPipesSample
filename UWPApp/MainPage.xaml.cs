@@ -26,8 +26,8 @@ namespace UWPApp
     /// </summary>
     public sealed partial class MainPage : Page
     {
-        private StreamReader reader;
-        private StreamWriter writer;
+        private static StreamReader reader;
+        private static StreamWriter writer;
 
         public MainPage()
         {
@@ -46,6 +46,8 @@ namespace UWPApp
         private static void PipeServerThread()
         {
             NamedPipeServerStream serverStream = new NamedPipeServerStream(@"LOCAL\mypipe", PipeDirection.InOut, 1, PipeTransmissionMode.Byte, PipeOptions.Asynchronous);
+            reader = new StreamReader(serverStream);
+            writer = new StreamWriter(serverStream);
             Debug.WriteLine("Waiting for connection");
             serverStream.WaitForConnection();
             Debug.WriteLine("Connection established");
@@ -67,9 +69,9 @@ namespace UWPApp
 
         private async void LaunchConsoleApp_OnClick(object sender, RoutedEventArgs e)
         {
-            await Windows.ApplicationModel.FullTrustProcessLauncher.LaunchFullTrustProcessForCurrentAppAsync();
+            //await Windows.ApplicationModel.FullTrustProcessLauncher.LaunchFullTrustProcessForCurrentAppAsync();
             
-            //Task.Run((Action)PipeClientThread);
+            Task.Run((Action)PipeClientThread);
         }
 
         private static void PipeClientThread()
@@ -80,15 +82,15 @@ namespace UWPApp
 
             Console.WriteLine("Connection established");
 
-            StreamReader reader = new StreamReader(client);
-            StreamWriter writer = new StreamWriter(client);
+            StreamReader clientReader = new StreamReader(client);
+            StreamWriter clientWriter = new StreamWriter(client);
             while (true)
             {
-                var line = reader.ReadLine();
-                Console.WriteLine($"Message: {line}");
+                var line = clientReader.ReadLine();
+                Debug.WriteLine($"Message: {line}");
 
-                writer.WriteLine(String.Join("", line.Reverse()));
-                writer.Flush();
+                clientWriter.WriteLine(String.Join("", line.Reverse()));
+                clientWriter.Flush();
             }
 
         }

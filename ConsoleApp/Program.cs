@@ -24,6 +24,7 @@ namespace ConsoleApp
         private static void PipeClientThread()
         {
             var client = new NamedPipeClientStream(".", @"LOCAL\mypipe", PipeDirection.InOut, PipeOptions.Asynchronous);
+            Console.WriteLine("Connecting");
 
             client.Connect(5000);
 
