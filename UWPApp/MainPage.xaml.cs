@@ -4,11 +4,15 @@ using System.Diagnostics;
 using System.IO;
 using System.IO.Pipes;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Runtime.InteropServices.WindowsRuntime;
 using System.Security.Principal;
 using System.Threading.Tasks;
+using Windows.ApplicationModel;
+using Windows.ApplicationModel.Store;
 using Windows.Foundation;
 using Windows.Foundation.Collections;
+using Windows.UI.Core;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
 using Windows.UI.Xaml.Controls.Primitives;
@@ -16,6 +20,7 @@ using Windows.UI.Xaml.Data;
 using Windows.UI.Xaml.Input;
 using Windows.UI.Xaml.Media;
 using Windows.UI.Xaml.Navigation;
+using Microsoft.Win32.SafeHandles;
 
 // The Blank Page item template is documented at https://go.microsoft.com/fwlink/?LinkId=402352&clcid=0x409
 
@@ -28,6 +33,8 @@ namespace UWPApp
     {
         private static StreamReader reader;
         private static StreamWriter writer;
+        private DateTime lastSentMessage;
+        private bool waitingForReply;
 
         public MainPage()
         {
@@ -43,56 +50,60 @@ namespace UWPApp
 
 
 
-        private static void PipeServerThread()
+        private void PipeServerThread()
         {
-            NamedPipeServerStream serverStream = new NamedPipeServerStream(@"LOCAL\mypipe", PipeDirection.InOut, 1, PipeTransmissionMode.Byte, PipeOptions.Asynchronous);
-            reader = new StreamReader(serverStream);
-            writer = new StreamWriter(serverStream);
+            NamedPipeServerStream serverStream = new NamedPipeServerStream(@"LOCAL\mypipe", PipeDirection.InOut, 1, PipeTransmissionMode.Message, PipeOptions.Asynchronous);
             Debug.WriteLine("Waiting for connection");
+            
             serverStream.WaitForConnection();
             Debug.WriteLine("Connection established");
 
+            reader = new StreamReader(serverStream);
+            writer = new StreamWriter(serverStream);
+
+            while (true)
+            {
+                var responseMessage = reader.ReadLine();
+
+                string appendix;
+                if (waitingForReply)
+                {
+                    waitingForReply = false;
+                    TimeSpan duration = DateTime.Now - lastSentMessage;
+                    appendix = $" rountrip duration: {duration.TotalMilliseconds}ms";
+                }
+                else
+                {
+                    appendix = string.Empty;
+                }
+
+                Dispatcher.RunAsync(CoreDispatcherPriority.Normal, () => ReceivedMessages.Text +=
+                    $"Received '{responseMessage}' from pipe {appendix} {Environment.NewLine}").AsTask().Wait();
+
+
+               }
 
         }
 
         private void SendMessage_OnClick(object sender, RoutedEventArgs e)
         {
-            DateTime pipeRequest = DateTime.Now;
+            if (writer == null)
+            {
+                ReceivedMessages.Text = "Pipe not open?";
+                return;
+            }
+            lastSentMessage = DateTime.Now;
+            waitingForReply = true;
             writer.WriteLine(Message.Text);
             writer.Flush();
-            reader.ReadLine();
-            DateTime pipeResponse = DateTime.Now;
-            TimeSpan pipeDuration = pipeResponse - pipeRequest;
-            ReceivedMessages.Text +=
-                $"Received response from pipe: {pipeResponse} after {pipeDuration.TotalMilliseconds}ms";
+            
         }
 
         private async void LaunchConsoleApp_OnClick(object sender, RoutedEventArgs e)
         {
-            //await Windows.ApplicationModel.FullTrustProcessLauncher.LaunchFullTrustProcessForCurrentAppAsync();
+            await FullTrustProcessLauncher.LaunchFullTrustProcessForCurrentAppAsync();
             
-            Task.Run((Action)PipeClientThread);
         }
 
-        private static void PipeClientThread()
-        {
-            var client = new NamedPipeClientStream(".", @"LOCAL\mypipe", PipeDirection.InOut, PipeOptions.Asynchronous);
-
-            client.Connect(5000);
-
-            Console.WriteLine("Connection established");
-
-            StreamReader clientReader = new StreamReader(client);
-            StreamWriter clientWriter = new StreamWriter(client);
-            while (true)
-            {
-                var line = clientReader.ReadLine();
-                Debug.WriteLine($"Message: {line}");
-
-                clientWriter.WriteLine(String.Join("", line.Reverse()));
-                clientWriter.Flush();
-            }
-
-        }
     }
 }

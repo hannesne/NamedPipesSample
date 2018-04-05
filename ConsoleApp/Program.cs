@@ -13,25 +13,36 @@ namespace ConsoleApp
 {
     class Program
     {
+        static StreamReader reader;
+        static StreamWriter writer;
+
         static void Main(string[] args)
         {
             Console.WriteLine("Hello World!");
             Thread pipeServerThread = new Thread(new ThreadStart(PipeClientThread));
             pipeServerThread.Start();
-            Console.ReadLine();
+
+            while (true)
+            {
+                string sendMessage = Console.ReadLine();
+                writer.WriteLine(sendMessage);
+                writer.Flush();
+
+            }
         }
+
 
         private static void PipeClientThread()
         {
-            var client = new NamedPipeClientStream(".", @"LOCAL\mypipe", PipeDirection.InOut, PipeOptions.Asynchronous);
-            Console.WriteLine("Connecting");
+            //get the pipename in powershell by running up the app, and then executing  [System.IO.Directory]::GetFiles("\\.\\pipe\\") | where {$_ -like '*mypipe*'} in powershell.
+            var client = new NamedPipeClientStream(".", @"Sessions\1\AppContainerNamedObjects\S-1-15-2-753128950-1760965839-196781726-1165193043-2994346047-4209839368-3121518441\mypipe", PipeDirection.InOut, PipeOptions.Asynchronous);
 
             client.Connect(5000);
 
             Console.WriteLine("Connection established");
 
-            StreamReader reader = new StreamReader(client);
-            StreamWriter writer = new StreamWriter(client);
+            reader = new StreamReader(client);
+            writer = new StreamWriter(client);
             while (true)
             {
                 var line = reader.ReadLine();
