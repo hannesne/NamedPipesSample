@@ -7,6 +7,7 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using System.Runtime.InteropServices.WindowsRuntime;
 using System.Security.Principal;
+using System.Text;
 using System.Threading.Tasks;
 using Windows.ApplicationModel;
 using Windows.ApplicationModel.Store;
@@ -45,11 +46,44 @@ namespace UWPApp
         protected override void OnNavigatedTo(NavigationEventArgs e)
         {
             base.OnNavigatedTo(e);
+            
+            string objectPath = GetPipePath();
+            Debug.WriteLine(objectPath);
+
             Task.Run((Action) PipeServerThread);
         }
 
+        private static string GetPipePath()
+        {
+            
+            uint pathLength;
+            bool result =
+                GetAppContainerNamedObjectPath(IntPtr.Zero, IntPtr.Zero, 0, IntPtr.Zero, out pathLength);
+            
+            string objectPath = string.Empty;
+            IntPtr pathPointer = Marshal.AllocHGlobal((int) (pathLength * 2));
+            if (!result && Marshal.GetLastWin32Error() == 122)
+            {
+                result =
+                    GetAppContainerNamedObjectPath(IntPtr.Zero, IntPtr.Zero, pathLength, pathPointer, out pathLength);
+            }
 
+            if (result)
+            {
+                objectPath = Marshal.PtrToStringUni(pathPointer);
+                Marshal.FreeHGlobal(pathPointer);
+            }
+            else
+            {
+                throw new Exception("Couldn't figure out the named object path for the app container.");
+            }
 
+            return objectPath;
+        }
+
+        [DllImport("Kernel32.dll",CharSet = CharSet.Unicode, SetLastError = true)]
+        static extern bool GetAppContainerNamedObjectPath(IntPtr Token, IntPtr AppContainerSid, UInt32 ObjectPathLength, IntPtr ObjectPath,out UInt32 ReturnLength);
+        
         private void PipeServerThread()
         {
             NamedPipeServerStream serverStream = new NamedPipeServerStream(@"LOCAL\mypipe", PipeDirection.InOut, 1, PipeTransmissionMode.Message, PipeOptions.Asynchronous);
