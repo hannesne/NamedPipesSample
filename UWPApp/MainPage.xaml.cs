@@ -21,6 +21,8 @@ using Windows.UI.Xaml.Input;
 using Windows.UI.Xaml.Media;
 using Windows.UI.Xaml.Navigation;
 using Microsoft.Win32.SafeHandles;
+using Windows.Security.Authentication.Web;
+using Windows.Storage;
 
 // The Blank Page item template is documented at https://go.microsoft.com/fwlink/?LinkId=402352&clcid=0x409
 
@@ -101,8 +103,9 @@ namespace UWPApp
 
         private async void LaunchConsoleApp_OnClick(object sender, RoutedEventArgs e)
         {
+            // Store the sid in local settings with key "PackageSid"
+            ApplicationData.Current.LocalSettings.Values["PackageSid"] = WebAuthenticationBroker.GetCurrentApplicationCallbackUri().Host.ToUpper();
             await FullTrustProcessLauncher.LaunchFullTrustProcessForCurrentAppAsync();
-            
         }
 
     }
