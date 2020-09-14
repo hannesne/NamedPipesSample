@@ -8,6 +8,7 @@ using System.Security.AccessControl;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Windows.Storage;
 
 namespace ConsoleApp
 {
@@ -34,8 +35,10 @@ namespace ConsoleApp
 
         private static void PipeClientThread()
         {
-            //get the pipename in powershell by running up the app, and then executing  [System.IO.Directory]::GetFiles("\\.\\pipe\\") | where {$_ -like '*mypipe*'} in powershell.
-            var client = new NamedPipeClientStream(".", @"Sessions\1\AppContainerNamedObjects\S-1-15-2-753128950-1760965839-196781726-1165193043-2994346047-4209839368-3121518441\mypipe", PipeDirection.InOut, PipeOptions.Asynchronous);
+            // Get the sid stored in local settings with key "PackageSid"
+            var client = new NamedPipeClientStream(".", 
+                $"Sessions\\{Process.GetCurrentProcess().SessionId}\\AppContainerNamedObjects\\{ApplicationData.Current.LocalSettings.Values["PackageSid"]}\\mypipe",
+                PipeDirection.InOut, PipeOptions.Asynchronous);
 
             client.Connect(5000);
 
